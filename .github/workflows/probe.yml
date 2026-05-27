@@ -1,125 +1,91 @@
 name: probe Action
-
-on:
+'on':
   issues:
-    types: [opened, reopened]
-
+    types:
+    - opened
+    - reopened
 jobs:
   test:
     name: probe Action
-    #if: contains(github.event.issue.labels.*.name, 'test-action')
-
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     env:
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-        
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.9' # Version range or exact version of a Python version to use, using SemVer's version range syntax
-          architecture: 'x64'  
+    - name: Checkout
+      uses: actions/checkout@v2
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.9'
+        architecture: x64
+    - uses: stefanbuck/github-issue-parser@v2
+      id: issue-parser
+      with:
+        template-path: .github/ISSUE_TEMPLATE/app_request.yml
+    - run: echo '${{ steps.issue-parser.outputs.jsonString }}' > bug-details.json
+    - run: echo '${{ steps.issue-parser.outputs.issueparser_Name }}' > name.json
+    - name: API
+      run: 'export api=$(curl https://win11react-api-united-states.herokuapp.com/api/x-frame?url=${{
+        steps.issue-parser.outputs.issueparser_URL }})
 
-      - uses: stefanbuck/github-issue-parser@v2
-        id: issue-parser
-        with:
-          template-path: .github/ISSUE_TEMPLATE/app_request.yml
+        echo $api
 
-      - run: echo '${{ steps.issue-parser.outputs.jsonString }}' > bug-details.json
-      
-      - run: echo '${{ steps.issue-parser.outputs.issueparser_Name }}' > name.json
+        echo "::set-env name=FRAME::$api"
 
-      - name: API
-        run: |
-          export api=$(curl https://win11react-api-united-states.herokuapp.com/api/x-frame?url=${{ steps.issue-parser.outputs.issueparser_URL }})
-          echo $api
-          echo "::set-env name=FRAME::$api"
-          
-      - name: iframe
-        run: echo ${{ env.FRAME}}
-      
-      - uses: ben-z/actions-comment-on-issue@1.0.2
-        if: ${{ env.FRAME == 'true' }}
-        with:
-          message: "Sorry the URL for the website ${{ steps.issue-parser.outputs.issueparser_Name }} is not iframeable."
-          GITHUB_TOKEN: ${{ secrets.BOT }}
-          
-      - uses: ben-z/actions-comment-on-issue@1.0.2
-        if: ${{ env.FRAME == 'false' }}
-        with:
-          message: "Thank you for suggesting, ${{ steps.issue-parser.outputs.issueparser_Name }} once approved it will be added. "
-          GITHUB_TOKEN: ${{ secrets.BOT }}
-          
-      - uses: actions-ecosystem/action-add-labels@v1
-        if: ${{ env.FRAME == 'false' }}
-        with:
-          labels: ready
-          github_token: ${{ secrets.STORE }}
-          
-      - uses: actions-ecosystem/action-add-labels@v1
-        if: ${{ env.FRAME == 'true' }}
-        with:
-          labels: not-supported
-          github_token: ${{ secrets.STORE }}    
-          
-      
-      - name: create-json
-        id: create-json
-        uses: jsdaniell/create-json@1.1.2
-        with:
-          name: "template.json"
-          json: ${{ secrets.MY_JSON }}
-          
-#      - uses: MerthinTechnologies/edit-json-action@v1
-#        if: ${{ env.FRAME == 'false' }}
-#        with:
-#          filename: './template.json'
-#          key: 'name'
-#          value: '${{ steps.issue-parser.outputs.issueparser_Name }}'
-#          
-#      - uses: MerthinTechnologies/edit-json-action@v1
-#        if: ${{ env.FRAME == 'false' }}
-#        with:
-#          filename: './template.json'
-#          key: 'data, url'
-#          value: '${{ steps.issue-parser.outputs.issueparser_URL }}'
-#          
-#      - uses: MerthinTechnologies/edit-json-action@v1
-#        if: ${{ env.FRAME == 'false' }}
-#        with:
-#          filename: './template.json'
-#          key: 'icon'
-#          value: '${{ steps.issue-parser.outputs.issueparser_ICON }}'
-#          
-#      - uses: MerthinTechnologies/edit-json-action@v1
-#        if: ${{ env.FRAME == 'false' }}
-#        with:
-#          filename: './template.json'
-#          key: 'data, Type'
-#          value: '${{ steps.issue-parser.outputs.issueparser_Type }}'    
-#          
-      - name: merge
-        if: ${{ env.FRAME == 'false' }}
-        run: |
-          export json=$(cat template.json)
-          python json-merge.py
-          rm name.json
-          rm bug-details.json
-          
-      - name: cpr
-        uses: peter-evans/create-pull-request@v3
-        if: ${{ env.FRAME == 'false' }}
-        with:
-          token: ${{ secrets.BOT }}
-          commit-message: Add ${{ steps.issue-parser.outputs.issueparser_Name }}
-          title: Add ${{ steps.issue-parser.outputs.issueparser_Name }}
-          body: Add ${{ steps.issue-parser.outputs.issueparser_Name }} with url ${{ steps.issue-parser.outputs.issueparser_URL }}. THIS SERVICE IS IN BETA CHANGES MUST BE CHECKED BEFORE MERGING. IMAGES MUST BE MANULLY ADDED.
-      
-      - uses: ben-z/actions-comment-on-issue@1.0.2
-        if: ${{ env.FRAME == 'false' }}
-        with:
-          message: "A Pull request has been generated. You may view this here: ${{ steps.cpr.outputs.pull-request-url }} "
-          GITHUB_TOKEN: ${{ secrets.BOT }}    
-          
+        '
+    - name: iframe
+      run: echo ${{ env.FRAME}}
+    - uses: ben-z/actions-comment-on-issue@1.0.2
+      if: ${{ env.FRAME == 'true' }}
+      with:
+        message: Sorry the URL for the website ${{ steps.issue-parser.outputs.issueparser_Name
+          }} is not iframeable.
+        GITHUB_TOKEN: ${{ secrets.BOT }}
+    - uses: ben-z/actions-comment-on-issue@1.0.2
+      if: ${{ env.FRAME == 'false' }}
+      with:
+        message: 'Thank you for suggesting, ${{ steps.issue-parser.outputs.issueparser_Name
+          }} once approved it will be added. '
+        GITHUB_TOKEN: ${{ secrets.BOT }}
+    - uses: actions-ecosystem/action-add-labels@v1
+      if: ${{ env.FRAME == 'false' }}
+      with:
+        labels: ready
+        github_token: ${{ secrets.STORE }}
+    - uses: actions-ecosystem/action-add-labels@v1
+      if: ${{ env.FRAME == 'true' }}
+      with:
+        labels: not-supported
+        github_token: ${{ secrets.STORE }}
+    - name: create-json
+      id: create-json
+      uses: jsdaniell/create-json@1.1.2
+      with:
+        name: template.json
+        json: ${{ secrets.MY_JSON }}
+    - name: merge
+      if: ${{ env.FRAME == 'false' }}
+      run: 'export json=$(cat template.json)
+
+        python json-merge.py
+
+        rm name.json
+
+        rm bug-details.json
+
+        '
+    - name: cpr
+      uses: peter-evans/create-pull-request@v3
+      if: ${{ env.FRAME == 'false' }}
+      with:
+        token: ${{ secrets.BOT }}
+        commit-message: Add ${{ steps.issue-parser.outputs.issueparser_Name }}
+        title: Add ${{ steps.issue-parser.outputs.issueparser_Name }}
+        body: Add ${{ steps.issue-parser.outputs.issueparser_Name }} with url ${{
+          steps.issue-parser.outputs.issueparser_URL }}. THIS SERVICE IS IN BETA CHANGES
+          MUST BE CHECKED BEFORE MERGING. IMAGES MUST BE MANULLY ADDED.
+    - uses: ben-z/actions-comment-on-issue@1.0.2
+      if: ${{ env.FRAME == 'false' }}
+      with:
+        message: 'A Pull request has been generated. You may view this here: ${{ steps.cpr.outputs.pull-request-url
+          }} '
+        GITHUB_TOKEN: ${{ secrets.BOT }}
